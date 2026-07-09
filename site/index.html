@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>abc-step-1000 — first 1000 STEP files from the ABC dataset</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 1.5rem;
+    line-height: 1.5;
+  }
+  h1 { margin-bottom: 0.2rem; }
+  .muted { opacity: 0.7; }
+  code, pre {
+    font-family: ui-monospace, monospace;
+    background: rgba(128, 128, 128, 0.12);
+    border-radius: 4px;
+  }
+  code { padding: 0.1em 0.3em; }
+  pre { padding: 0.7em 1em; overflow-x: auto; }
+  input#filter {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5em 0.7em;
+    margin: 1rem 0 0.5rem;
+    font: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.5);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td {
+    text-align: left;
+    padding: 0.3em 0.8em 0.3em 0;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+    white-space: nowrap;
+  }
+  td.num, th.num { text-align: right; }
+  .tablewrap { overflow-x: auto; }
+  footer { margin-top: 2rem; font-size: 0.85rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<h1>abc-step-1000</h1>
+<p class="muted" id="subtitle">Loading index…</p>
+
+<p>The first 1000 STEP files from the
+<a href="https://deep-geometry.github.io/abc-dataset/">ABC dataset</a>
+(Koch et&nbsp;al., CVPR 2019), a collection of one million CAD models for
+geometric deep learning. Files are served gzip-compressed; decompress after
+downloading:</p>
+
+<pre>curl -sL &lt;file-url&gt; | gunzip &gt; model.step</pre>
+
+<p>A machine-readable manifest with paths and sizes is at
+<a href="index.json"><code>index.json</code></a>. See the
+<a href="https://github.com/concept-collection/abc-step-1000">repository</a>
+for details, bulk-download recipes, and attribution. The copyright of the CAD
+models is owned by their creators
+(<a href="https://www.onshape.com/en/legal/terms-of-use#your_content">Onshape
+Terms of Use 1.g.ii</a>).</p>
+
+<input id="filter" type="search" placeholder="Filter by file name…" hidden>
+<div class="tablewrap">
+<table id="files" hidden>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th class="num">STEP size</th>
+      <th class="num">Download (.gz)</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+</div>
+
+<footer>
+Source: ABC dataset — <em>ABC: A Big CAD Model Dataset For Geometric Deep
+Learning</em>, Koch, Matveev, Jiang, Williams, Artemov, Burnaev, Alexa,
+Zorin, Panozzo. CVPR 2019.
+</footer>
+
+<script>
+function fmtBytes(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + ' GB';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
+  return (n / 1e3).toFixed(1) + ' kB';
+}
+
+fetch('index.json').then(r => r.json()).then(index => {
+  document.getElementById('subtitle').textContent =
+    `${index.count} files · ${fmtBytes(index.totalGzBytes)} compressed · ` +
+    `${fmtBytes(index.totalStepBytes)} uncompressed · from ${index.chunk}`;
+
+  const tbody = document.querySelector('#files tbody');
+  for (const f of index.files) {
+    const tr = document.createElement('tr');
+
+    const tdName = document.createElement('td');
+    tdName.textContent = f.name;
+    tr.appendChild(tdName);
+
+    const tdSize = document.createElement('td');
+    tdSize.className = 'num';
+    tdSize.textContent = fmtBytes(f.stepBytes);
+    tr.appendChild(tdSize);
+
+    const tdGz = document.createElement('td');
+    tdGz.className = 'num';
+    const a = document.createElement('a');
+    a.href = f.path;
+    a.textContent = fmtBytes(f.gzBytes);
+    tdGz.appendChild(a);
+    tr.appendChild(tdGz);
+
+    tbody.appendChild(tr);
+  }
+
+  const filter = document.getElementById('filter');
+  filter.addEventListener('input', () => {
+    const q = filter.value.toLowerCase();
+    for (const tr of tbody.rows) {
+      tr.hidden = !tr.cells[0].textContent.toLowerCase().includes(q);
+    }
+  });
+
+  filter.hidden = false;
+  document.getElementById('files').hidden = false;
+}).catch(err => {
+  document.getElementById('subtitle').textContent =
+    'Failed to load index.json: ' + err;
+});
+</script>
+</body>
+</html>

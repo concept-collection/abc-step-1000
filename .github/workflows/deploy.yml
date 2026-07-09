@@ -1,0 +1,42 @@
+name: Build and deploy to GitHub Pages
+
+# The hosted content is static (a fixed slice of the ABC dataset), so the
+# workflow only runs on manual dispatch — no need to re-download the ~1.6 GB
+# chunk on every push.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure 7z is available
+        run: |
+          if ! command -v 7z > /dev/null; then
+            sudo apt-get update && sudo apt-get install -y p7zip-full
+          fi
+      - name: Build site
+        run: scripts/build.sh
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
