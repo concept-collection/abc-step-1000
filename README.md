@@ -45,6 +45,13 @@ extracts the first 1000 model directories, gzips each `.step` file, generates
 `index.json`, and deploys the result to GitHub Pages. The content is a fixed
 slice of the dataset, so the workflow runs on manual dispatch only.
 
+The canonical host (archive.nyu.edu) rate-limits downloads per IP and often
+serves CI runners an HTML restrictions page instead of the archive, so the
+build validates the download and falls back to a
+[release asset](https://github.com/concept-collection/abc-step-1000/releases/tag/data-v00)
+on this repository that repacks just the first 1000 model directories of the
+canonical chunk (byte-identical files).
+
 ## Source and acknowledgments
 
 All CAD models come from the **ABC dataset**:

@@ -16,15 +16,34 @@ N=${N:-1000}
 mkdir -p "$WORK"
 cd "$WORK"
 
+# The name recorded in index.json always refers to the canonical source chunk.
+CHUNK_NAME=abc_0000_step_v00.7z
+
+# Mirror holding a repack of just the first 1000 model directories of the
+# canonical chunk (byte-identical files). Used because archive.nyu.edu
+# rate-limits by IP (mod_qos) and often redirects CI runners to an HTML
+# restrictions page instead of serving the file.
+MIRROR_URL=https://github.com/concept-collection/abc-step-1000/releases/download/data-v00/abc_0000_step_v00_first1000.7z
+
+is_7z() { [ "$(head -c 2 "$1" 2> /dev/null)" = "7z" ]; }
+
 if [ -z "${CHUNK_ARCHIVE:-}" ]; then
     wget -q https://deep-geometry.github.io/abc-dataset/data/step_v00.txt
     CHUNK_URL=$(sed '1q;d' step_v00.txt | awk '{print $1}')
-    CHUNK_NAME=$(sed '1q;d' step_v00.txt | awk '{print $2}')
-    echo "Downloading $CHUNK_NAME from $CHUNK_URL ..."
-    wget -q --no-check-certificate "$CHUNK_URL" -O "$CHUNK_NAME"
-    CHUNK_ARCHIVE="$WORK/$CHUNK_NAME"
+    for attempt in 1 2 3; do
+        echo "Downloading $CHUNK_NAME from $CHUNK_URL (attempt $attempt) ..."
+        wget -q --no-check-certificate "$CHUNK_URL" -O chunk.7z || true
+        is_7z chunk.7z && break
+        echo "Response is not a 7z archive (rate-limited?); retrying in 30 s"
+        sleep 30
+    done
+    if ! is_7z chunk.7z; then
+        echo "Falling back to mirror: $MIRROR_URL"
+        wget -q "$MIRROR_URL" -O chunk.7z
+        is_7z chunk.7z
+    fi
+    CHUNK_ARCHIVE="$WORK/chunk.7z"
 fi
-CHUNK_NAME=$(basename "$CHUNK_ARCHIVE")
 
 # Extract only the first N model directories; the full chunk holds 10000
 # models (~15 GB uncompressed), far more than we need or than CI disk allows.
